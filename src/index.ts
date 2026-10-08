@@ -1,48 +1,17 @@
-import { OpenAPIHono } from '@hono/zod-openapi'
-import { basicAuth } from 'hono/basic-auth'
-import { apiReference } from '@scalar/hono-api-reference'
+import { Hono } from 'hono'
 import { requestLogger } from './middlewares/logger'
 import { globalErrorHandler } from './middlewares/error'
 import { logger } from './utils/logger'
+import { v1App } from './routes/v1'
 
-// Initialize OpenAPIHono
-const app = new OpenAPIHono()
+const app = new Hono()
 
 // Apply Global Middlewares
 app.use('*', requestLogger)
 app.onError(globalErrorHandler)
 
-// --- AREA TERLINDUNGI UNTUK DOKUMENTASI ---
-// Terapkan Basic Auth HANYA untuk path /docs dan /openapi.json
-const docsAuth = basicAuth({
-  username: process.env.DOCS_USERNAME || 'developer',
-  password: process.env.DOCS_PASSWORD || 'rahasia-tim-dev',
-})
-
-app.use('/docs/*', docsAuth)
-app.use('/openapi.json', docsAuth)
-
-// 1. Generate OpenAPI Spec (Sekarang dilindungi basicAuth)
-app.doc('/openapi.json', {
-  openapi: '3.0.0',
-  info: { 
-    title: 'POS API Backend', 
-    version: '1.0.0',
-    description: 'API Documentation for POS Application'
-  },
-})
-
-// 2. Render Scalar UI (Sekarang dilindungi basicAuth)
-app.get('/docs', apiReference({
-  spec: { url: '/openapi.json' },
-}))
-
 // --- ROUTES AREA ---
-import { productRouter } from './routes/product.route'
-
-const v1App = new OpenAPIHono()
-v1App.route('/products', productRouter)
-
+// Mount V1 API
 app.route('/api/v1', v1App)
 
 app.get('/', (c) => {
