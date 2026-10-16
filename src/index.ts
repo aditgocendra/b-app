@@ -14,6 +14,11 @@ app.onError(globalErrorHandler)
 // Mount V1 API
 app.route('/api/v1', v1App)
 
+// Documentation redirects for convenience
+app.get('/docs', (c) => c.redirect('/api/v1/docs'))
+app.get('/v1/docs', (c) => c.redirect('/api/v1/docs'))
+app.get('/v1/openapi.json', (c) => c.redirect('/api/v1/openapi.json'))
+
 app.get('/', (c) => {
   return c.text('Welcome to POS API Backend!')
 })
