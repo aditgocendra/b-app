@@ -4,18 +4,18 @@ import type { CreateProductInput } from '../validations/product.schema'
 
 export class ProductService {
   /**
-   * Mengambil semua data produk
+   * Retrieve all products
    */
   static async getAllProducts() {
     logger.info('Fetching all products from database')
-    // Asumsi schema prisma memiliki model Product
+    // Assumes prisma schema has Product model
     // Return mock data for now since we haven't defined schema.prisma completely
     // return prisma.product.findMany()
     return [] 
   }
 
   /**
-   * Menambahkan produk baru
+   * Create a new product
    */
   static async createProduct(data: CreateProductInput) {
     logger.info({ data }, 'Creating new product')
@@ -27,11 +27,11 @@ export class ProductService {
   }
 
   /**
-   * Mengurangi stok (contoh logika transaksi terpusat di Service)
+   * Decrement product stock (example of centralized business transaction in Service Layer)
    */
   static async decrementStock(productId: string, quantity: number) {
     logger.info({ productId, quantity }, 'Decrementing product stock')
-    // Logika transaksi database bisa menggunakan prisma.$transaction
+    // Database transaction logic can use prisma.$transaction
     // if stock < quantity throw error
     // return prisma.product.update({ ... })
     return true

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { mockDeep, type DeepMockProxy } from 'vitest-mock-extended'
 import type { PrismaClient } from '@prisma/client'
 import { AuthService } from '../src/services/auth.service'
@@ -17,7 +17,7 @@ describe('AuthService (Unit Tests with Prisma Mock)', () => {
   })
 
   describe('register', () => {
-    it('harus berhasil mendaftarkan pengguna baru dan password di-hash', async () => {
+    it('should successfully register a new user with hashed password', async () => {
       prismaMock.user.findFirst.mockResolvedValue(null)
       prismaMock.user.create.mockResolvedValue({
         id: 'user-uuid-1',
@@ -45,7 +45,7 @@ describe('AuthService (Unit Tests with Prisma Mock)', () => {
       expect(prismaMock.user.create).toHaveBeenCalledTimes(1)
     })
 
-    it('harus melempar error jika email sudah digunakan', async () => {
+    it('should throw error if email is already registered', async () => {
       prismaMock.user.findFirst.mockResolvedValue({
         id: 'existing-id',
         email: 'kasir@example.com',
@@ -58,12 +58,12 @@ describe('AuthService (Unit Tests with Prisma Mock)', () => {
           username: 'kasir_baru',
           password: 'secretPassword123',
         })
-      ).rejects.toThrow('Email sudah terdaftar')
+      ).rejects.toThrow('Email is already registered')
     })
   })
 
   describe('login', () => {
-    it('harus berhasil login dan menghasilkan access & refresh token', async () => {
+    it('should successfully login and generate access & refresh tokens', async () => {
       const plainPassword = 'password123'
       const hashedPassword = await Bun.password.hash(plainPassword)
 
@@ -93,7 +93,7 @@ describe('AuthService (Unit Tests with Prisma Mock)', () => {
       expect(prismaMock.refreshToken.create).toHaveBeenCalledTimes(1)
     })
 
-    it('harus gagal login jika password salah', async () => {
+    it('should fail login if password is incorrect', async () => {
       const hashedPassword = await Bun.password.hash('correct-password')
 
       prismaMock.user.findUnique.mockResolvedValue({
@@ -109,10 +109,10 @@ describe('AuthService (Unit Tests with Prisma Mock)', () => {
           email: 'user@example.com',
           password: 'wrong-password',
         })
-      ).rejects.toThrow('Email atau password tidak valid')
+      ).rejects.toThrow('Invalid email or password')
     })
 
-    it('harus gagal login jika status user bukan ACTIVE', async () => {
+    it('should fail login if user status is not ACTIVE', async () => {
       prismaMock.user.findUnique.mockResolvedValue({
         id: 'user-1',
         email: 'suspended@example.com',
@@ -124,12 +124,12 @@ describe('AuthService (Unit Tests with Prisma Mock)', () => {
           email: 'suspended@example.com',
           password: 'any-password',
         })
-      ).rejects.toThrow('Akun sedang tidak aktif atau ditangguhkan')
+      ).rejects.toThrow('Account is inactive or suspended')
     })
   })
 
   describe('refreshToken (Token Rotation)', () => {
-    it('harus merotasi refresh token dan menghasilkan access token baru', async () => {
+    it('should rotate refresh token and issue new access token', async () => {
       const userId = 'user-rotasi-1'
       const oldRefreshToken = await authService.generateRefreshToken(userId)
 
@@ -157,7 +157,7 @@ describe('AuthService (Unit Tests with Prisma Mock)', () => {
       expect(prismaMock.$transaction).toHaveBeenCalledTimes(1)
     })
 
-    it('harus melempar error jika token kedaluwarsa di DB', async () => {
+    it('should throw error if token is expired in database', async () => {
       const userId = 'user-rotasi-1'
       const oldRefreshToken = await authService.generateRefreshToken(userId)
 
@@ -165,20 +165,20 @@ describe('AuthService (Unit Tests with Prisma Mock)', () => {
         id: 'token-db-id',
         token: oldRefreshToken,
         userId,
-        expiresAt: new Date(Date.now() - 100000), // Sudah lewat
+        expiresAt: new Date(Date.now() - 100000), // Expired
         user: { status: 'ACTIVE' },
       } as any)
 
       prismaMock.refreshToken.delete.mockResolvedValue({} as any)
 
       await expect(authService.refresh(oldRefreshToken)).rejects.toThrow(
-        'Refresh token telah kedaluwarsa'
+        'Refresh token has expired'
       )
     })
   })
 
   describe('logout', () => {
-    it('harus mencabut refresh token dari database', async () => {
+    it('should revoke refresh token from database', async () => {
       prismaMock.refreshToken.deleteMany.mockResolvedValue({ count: 1 } as any)
 
       const result = await authService.logout('sample-token')
@@ -191,7 +191,7 @@ describe('AuthService (Unit Tests with Prisma Mock)', () => {
   })
 
   describe('forgotPassword, verifyResetToken & resetPassword', () => {
-    it('harus membuat reset token untuk user yang valid', async () => {
+    it('should generate reset token for valid user', async () => {
       prismaMock.user.findUnique.mockResolvedValue({
         id: 'user-reset-1',
         email: 'user@example.com',
@@ -207,7 +207,7 @@ describe('AuthService (Unit Tests with Prisma Mock)', () => {
       expect(prismaMock.$transaction).toHaveBeenCalledTimes(1)
     })
 
-    it('harus memverifikasi reset token yang masih valid', async () => {
+    it('should verify valid reset token', async () => {
       prismaMock.passwordResetToken.findUnique.mockResolvedValue({
         id: 'prt-1',
         token: 'valid-token',
@@ -220,7 +220,7 @@ describe('AuthService (Unit Tests with Prisma Mock)', () => {
       expect(result.email).toBe('user@example.com')
     })
 
-    it('harus berhasil mereset password baru', async () => {
+    it('should successfully reset user password', async () => {
       prismaMock.passwordResetToken.findUnique.mockResolvedValue({
         id: 'prt-1',
         token: 'valid-token',

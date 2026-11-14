@@ -6,17 +6,17 @@ import { authRouter } from './auth.route'
 
 export const v1App = new OpenAPIHono()
 
-// --- AREA TERLINDUNGI UNTUK DOKUMENTASI API v1 ---
-// Terapkan Basic Auth HANYA untuk path /docs dan /openapi.json
+// --- PROTECTED AREA FOR API v1 DOCUMENTATION ---
+// Apply Basic Auth ONLY to /docs and /openapi.json paths
 const docsAuth = basicAuth({
   username: process.env.DOCS_USERNAME || 'developer',
-  password: process.env.DOCS_PASSWORD || 'rahasia-tim-dev',
+  password: process.env.DOCS_PASSWORD || 'dev-team-secret',
 })
 
 v1App.use('/docs/*', docsAuth)
 v1App.use('/openapi.json', docsAuth)
 
-// 1. Generate OpenAPI Spec untuk API v1
+// 1. Generate OpenAPI Spec for API v1
 v1App.doc('/openapi.json', {
   openapi: '3.0.0',
   info: { 

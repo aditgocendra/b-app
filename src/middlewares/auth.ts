@@ -10,7 +10,7 @@ export interface JwtUserPayload {
   exp: number
 }
 
-// Deklarasi type context Hono untuk user
+// Declare Hono context type for user
 declare module 'hono' {
   interface ContextVariableMap {
     user: JwtUserPayload
@@ -20,8 +20,8 @@ declare module 'hono' {
 const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || 'super-secret-access-token-key-32-chars-min'
 
 /**
- * Middleware untuk memvalidasi JWT Access Token dari Header Authorization: Bearer <token>
- * Pengecekan instan di memori CPU tanpa query database.
+ * Middleware to validate JWT Access Token from Authorization Header: Bearer <token>
+ * Instant CPU memory validation without database query.
  */
 export const verifyJwt: MiddlewareHandler = async (c, next) => {
   const authHeader = c.req.header('Authorization')
@@ -30,7 +30,7 @@ export const verifyJwt: MiddlewareHandler = async (c, next) => {
     return c.json(
       {
         success: false,
-        message: 'Akses ditolak: Access token diperlukan',
+        message: 'Access denied: Access token is required',
       },
       401
     )
@@ -43,11 +43,11 @@ export const verifyJwt: MiddlewareHandler = async (c, next) => {
     c.set('user', payload)
     await next()
   } catch (err: any) {
-    logger.warn({ error: err.message }, 'Gagal memverifikasi JWT token')
+    logger.warn({ error: err.message }, 'Failed to verify JWT token')
     return c.json(
       {
         success: false,
-        message: 'Unauthorized: Token tidak valid atau telah kedaluwarsa',
+        message: 'Unauthorized: Invalid or expired token',
       },
       401
     )
@@ -56,7 +56,7 @@ export const verifyJwt: MiddlewareHandler = async (c, next) => {
 
 /**
  * Role-Based Access Control (RBAC) Middleware
- * Memeriksa apakah role pengguna memiliki izin
+ * Checks if the user role has sufficient permission
  */
 export const requireRole = (...allowedRoles: string[]): MiddlewareHandler => {
   return async (c, next) => {
@@ -66,7 +66,7 @@ export const requireRole = (...allowedRoles: string[]): MiddlewareHandler => {
       return c.json(
         {
           success: false,
-          message: 'Unauthorized: User tidak terotentikasi',
+          message: 'Unauthorized: User not authenticated',
         },
         401
       )
@@ -75,12 +75,12 @@ export const requireRole = (...allowedRoles: string[]): MiddlewareHandler => {
     if (!allowedRoles.includes(user.role)) {
       logger.warn(
         { userId: user.sub, role: user.role, requiredRoles: allowedRoles },
-        'Akses ditolak karena peran tidak memadai'
+        'Access denied due to insufficient permissions'
       )
       return c.json(
         {
           success: false,
-          message: 'Forbidden: Anda tidak memiliki izin untuk mengakses resource ini',
+          message: 'Forbidden: You do not have permission to access this resource',
         },
         403
       )
@@ -90,7 +90,7 @@ export const requireRole = (...allowedRoles: string[]): MiddlewareHandler => {
   }
 }
 
-// Alias untuk kompatibilitas
+// Alias for backward compatibility
 export const checkRole = (requiredRole: string): MiddlewareHandler => {
   return requireRole(requiredRole)
 }

@@ -6,7 +6,7 @@ export const ProductSchema = z.object({
     description: 'Unique identifier for the product',
   }),
   name: z.string().min(3).openapi({
-    example: 'Kopi Susu Gula Aren',
+    example: 'Iced Latte Coffee',
     description: 'Name of the product',
   }),
   price: z.number().positive().openapi({
