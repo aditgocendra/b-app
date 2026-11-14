@@ -25,7 +25,7 @@ describe('AuthService (Unit Tests with Prisma Mock)', () => {
         username: 'kasir1',
         password: 'hashed-password-123',
         phoneNumber: '08123456789',
-        role: 'KASIR',
+        role: 'CASHIER',
         status: 'ACTIVE',
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -36,7 +36,7 @@ describe('AuthService (Unit Tests with Prisma Mock)', () => {
         username: 'kasir1',
         password: 'secretPassword123',
         phoneNumber: '08123456789',
-        role: 'KASIR',
+        role: 'CASHIER',
       })
 
       expect(result).toHaveProperty('id', 'user-uuid-1')
@@ -72,7 +72,7 @@ describe('AuthService (Unit Tests with Prisma Mock)', () => {
         email: 'user@example.com',
         username: 'user1',
         password: hashedPassword,
-        role: 'KASIR',
+        role: 'CASHIER',
         status: 'ACTIVE',
         phoneNumber: null,
         createdAt: new Date(),
@@ -142,7 +142,7 @@ describe('AuthService (Unit Tests with Prisma Mock)', () => {
           id: userId,
           email: 'user@example.com',
           username: 'user1',
-          role: 'KASIR',
+          role: 'CASHIER',
           status: 'ACTIVE',
         },
       } as any)

@@ -1,5 +1,5 @@
 import { sign, verify } from 'hono/jwt'
-import type { PrismaClient } from '@prisma/client'
+import type { PrismaClient, Role } from '@prisma/client'
 import { prisma as defaultPrisma } from '../db/prisma'
 import { logger } from '../utils/logger'
 import type {
@@ -89,14 +89,13 @@ export class AuthService {
         username: data.username,
         password: hashedPassword,
         phoneNumber: data.phoneNumber,
-        role: data.role || 'KASIR',
+        role: (data.role || 'CASHIER') as Role,
         status: 'ACTIVE',
       },
     })
 
     logger.info({ userId: newUser.id }, 'User successfully registered')
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...userWithoutPassword } = newUser
     return userWithoutPassword
   }
@@ -140,7 +139,6 @@ export class AuthService {
 
     logger.info({ userId: user.id }, 'User logged in successfully and session created')
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...userWithoutPassword } = user
     return {
       accessToken,
@@ -176,7 +174,7 @@ export class AuthService {
     }
 
     if (storedToken.expiresAt < new Date()) {
-      await this.db.refreshToken.delete({ where: { id: storedToken.id } }).catch(() => {})
+      await this.db.refreshToken.delete({ where: { id: storedToken.id } }).catch(() => { })
       throw new Error('Refresh token has expired')
     }
 

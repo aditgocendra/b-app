@@ -1,14 +1,14 @@
 import { z } from '@hono/zod-openapi'
 
-export const RoleEnum = z.enum(['SUPER_ADMIN', 'ADMIN_GUDANG', 'KASIR'])
+export const RoleEnum = z.enum(['SUPER_ADMIN', 'ADMIN', 'WAREHOUSE_ADMIN', 'CASHIER'])
 export const UserStatusEnum = z.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED'])
 
 export const UserResponseSchema = z.object({
   id: z.string().uuid().openapi({ example: 'b94dbba2-0c15-4fa8-bcf6-13a96860341c' }),
-  email: z.string().email().openapi({ example: 'kasir@example.com' }),
-  username: z.string().openapi({ example: 'kasir01' }),
+  email: z.string().email().openapi({ example: 'cashier@example.com' }),
+  username: z.string().openapi({ example: 'cashier01' }),
   phoneNumber: z.string().nullable().optional().openapi({ example: '08123456789' }),
-  role: RoleEnum.openapi({ example: 'KASIR' }),
+  role: RoleEnum.openapi({ example: 'CASHIER' }),
   status: UserStatusEnum.openapi({ example: 'ACTIVE' }),
   createdAt: z.string().or(z.date()).openapi({ example: '2026-10-08T12:00:00.000Z' }),
   updatedAt: z.string().or(z.date()).openapi({ example: '2026-10-08T12:00:00.000Z' }),
@@ -20,7 +20,7 @@ export const RegisterSchema = z.object({
   username: z.string().min(3).max(30).openapi({ example: 'john_doe', description: 'Unique username (min 3 chars)' }),
   password: z.string().min(6).openapi({ example: 'StrongP@ssw0rd', description: 'Plain password (min 6 chars)' }),
   phoneNumber: z.string().optional().openapi({ example: '081234567890', description: 'Optional phone number' }),
-  role: RoleEnum.optional().default('KASIR').openapi({ example: 'KASIR', description: 'User role' }),
+  role: RoleEnum.optional().default('CASHIER').openapi({ example: 'CASHIER', description: 'User role' }),
 }).openapi('RegisterRequest')
 
 // Login Schema
