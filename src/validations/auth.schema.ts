@@ -61,7 +61,7 @@ export const ResetPasswordSchema = z.object({
   password: z.string().min(6).openapi({ example: 'NewSecret123!' }),
   confirmPassword: z.string().min(6).openapi({ example: 'NewSecret123!' }),
 }).refine((data) => data.password === data.confirmPassword, {
-  message: 'Password dan confirm password tidak cocok',
+  message: 'Password and confirm password do not match',
   path: ['confirmPassword'],
 }).openapi('ResetPasswordRequest')
 

@@ -1,104 +1,114 @@
-# Product Requirements Document (PRD) & Panduan Arsitektur Backend
+# Product Requirements Document (PRD) & Backend Architecture Guide
 
-Dokumen ini berfungsi sebagai referensi utama bagi AI (dan developer) dalam membangun aplikasi backend. Semua implementasi kode harus merujuk pada standar arsitektur dan teknologi yang telah ditentukan di bawah ini.
+This document serves as the primary reference for AI agents (and developers) when building and maintaining the backend application. All code implementations must adhere to the architectural standards and technology stack defined below.
 
-## 1. Teknologi & Environment (Tech Stack)
-- **Runtime:** [Bun](https://bun.sh/) (Efisien, cepat, dan modern)
-- **Framework:** [Hono](https://hono.dev/) (Gunakan dokumentasi terbaru dan stabil)
+## 1. Technology & Environment (Tech Stack)
+- **Runtime:** [Bun](https://bun.sh/) (Efficient, fast, and modern)
+- **Framework:** [Hono](https://hono.dev/) (Use latest stable documentation)
 - **Database:** PostgreSQL
-- **ORM:** [Prisma](https://www.prisma.io/) (Gunakan dokumentasi ofisial terbaru)
+- **ORM:** [Prisma](https://www.prisma.io/) (Use latest official documentation)
 
-## 2. Arsitektur Aplikasi (Layered Architecture)
-Aplikasi ini harus dibangun menggunakan pendekatan *Layered Architecture* untuk memisahkan tanggung jawab, dengan struktur direktori standar sebagai berikut:
+## 2. Application Architecture (Layered Architecture)
+This application must be built using a *Layered Architecture* pattern to maintain separation of concerns, structured with the following standard directory layout:
 
 ```text
 src/
-├── index.ts               # Entry point (Inisialisasi Hono & jalankan server Bun)
+├── index.ts               # Entry point (Initializes Hono & runs Bun server)
 ├── db/
-│   └── prisma.ts          # Konfigurasi ORM (misal: Prisma untuk Neon Postgres)
+│   └── prisma.ts          # ORM configuration (e.g., Prisma client for Postgres)
 ├── middlewares/
-│   ├── auth.ts            # Middleware JWT & Role-Based Access Control (RBAC)
+│   ├── auth.ts            # JWT middleware & Role-Based Access Control (RBAC)
 │   └── error.ts           # Global error handler
 ├── routes/
-│   └── product.route.ts   # Hanya mengatur HTTP request/response & Endpoint
+│   └── product.route.ts   # HTTP request/response handling & OpenAPI Endpoints
 ├── services/
-│   └── product.service.ts # Logika bisnis utama (Pemrosesan data, perhitungan)
+│   └── product.service.ts # Core business logic (Data processing, calculations, transactions)
 └── validations/
-    └── product.schema.ts  # Skema validasi data menggunakan Zod
+    └── product.schema.ts  # Request/response validation schemas using Zod
 ```
 
-### Prinsip Utama Arsitektur:
-1. **Konsistensi Logika Bisnis:**
-   Seluruh logika bisnis yang kompleks (seperti memotong stok, memvalidasi aturan diskon, hingga mengecek RBAC) **harus ditempatkan secara terpusat di Service Layer**. Logika ini harus dapat dieksekusi secara konsisten baik dipanggil melalui HTTP Route/Controller, maupun melalui *cron job* internal tanpa modifikasi.
-2. **Keandalan Transaksi (Reliability):**
-   Interaksi dengan database tetap terisolasi. Jika sebuah transaksi kompleks gagal di tengah proses, Service Layer bertanggung jawab mengatur pembatalan (rollback) transaksi dengan aman tanpa membocorkan detail error spesifik ke tingkat Route (HTTP layer).
-3. **Kemudahan Pengujian Terisolasi:**
-   Service Layer harus berupa murni fungsi TypeScript yang **tidak memiliki ketergantungan pada objek request/response dari Hono**. Hal ini menjamin proses *unit testing* berjalan cepat dan dapat diuji secara mandiri.
+### Core Architectural Principles:
+1. **Centralized Business Logic Consistency:**
+   All complex business logic (such as stock deduction, discount validation, calculations, and RBAC rules) **must reside centrally within the Service Layer**. This logic must be directly reusable whether invoked via HTTP Routes/Controllers or internal background cron jobs without duplication.
+2. **Transaction Reliability:**
+   Database interactions must remain properly isolated. If a complex transaction fails midway, the Service Layer is responsible for safely executing rollback mechanisms without exposing low-level database error details to the Route (HTTP layer).
+3. **Isolated Testability:**
+   The Service Layer must consist purely of TypeScript functions that **have no coupling or dependency on Hono request/response context objects**. This guarantees unit tests run quickly, predictably, and independently with mocks.
 
-## 3. Strategi Pengujian (Testing)
-Pengujian (Testing) sangat diutamakan dan menggunakan **Vitest** dipadukan dengan **Prisma Mock** agar tidak perlu menyentuh database asli atau menjalankan server.
+## 3. Testing Strategy
+Testing is a top priority and utilizes **Vitest** paired with **Prisma Mock** (`vitest-mock-extended`) to test business logic quickly without requiring a live database connection or starting a web server.
 
-**Prioritas Pengujian (Layer Unit Test):**
-1. **Service Layer (Prioritas Utama):** Wajib dilakukan *Unit Test* untuk memastikan logika bisnis berjalan akurat.
-2. **Route / Controller Layer:** Prioritas untuk *Integration Test* / *E2E API Test* untuk memastikan request/response valid.
+**Testing Layer Priorities:**
+1. **Service Layer (Top Priority):** Mandatory *Unit Tests* verifying that business logic, error conditions, and transactions execute accurately.
+2. **Route / Controller Layer:** Focused on *Integration Tests* / *E2E API Tests* verifying request validation, authentication, and HTTP responses.
 
 ## 4. Logging System
-Logging aplikasi diimplementasikan menggunakan **Pino** untuk performa terbaik.
-- **Di Level Middleware (Routes):** Wajib mencatat (`log`) setiap request HTTP yang masuk dan keluar beserta durasi eksekusinya.
-- **Di Level Service:** Digunakan untuk melacak *flow* (alur) bisnis kritis, mencatat *metric* tertentu, atau menangkap *error* spesifik dengan rapi.
+Application logging is implemented using **Pino** for optimal high-performance structured logging.
+- **Middleware Level (Routes):** Mandatory request logging recording incoming/outgoing HTTP requests, HTTP methods, paths, status codes, and response latency.
+- **Service Level:** Used to trace critical business flows, record metrics, and capture handled errors cleanly.
 
 ## 5. API Endpoints & Versioning
-Semua *endpoint* harus menggunakan teknik *Versioning* (misal: `/api/v1`, `/api/v2`).
-**Tujuan Versioning:**
-- Mencegah *Breaking Changes* pada klien/frontend lama.
-- Melindungi integrasi pihak ketiga.
-- Memungkinkan evolusi logika bisnis di masa mendatang dengan mulus.
+All public API endpoints must follow URL *Versioning* (e.g., `/api/v1`, `/api/v2`).
+**Objectives of Versioning:**
+- Prevent *Breaking Changes* for existing frontend and mobile clients.
+- Protect third-party integrations.
+- Enable smooth iteration and evolution of business requirements over time.
 
-**Syarat Kenaikan Versi (Version Bump):**
-Kenaikan versi *endpoint* diperlukan apabila terjadi perubahan yang berpotensi merusak (*breaking*):
-- Menambah/mengubah/menghapus struktur kolom JSON yang wajib (mandatory).
-- Mengubah tipe data (misal dari `String` menjadi `Array`).
-- Mengubah struktur URL proses (misal proses `/checkout` dipisah menjadi dua tahapan *endpoint* berbeda).
+**Version Bump Criteria:**
+A major version bump of an endpoint is required when introducing breaking changes:
+- Adding, altering, or removing mandatory JSON fields in payloads.
+- Altering data types (e.g., changing from `String` to `Array`).
+- Changing workflow URL structures (e.g., splitting a single `/checkout` process into two distinct sequential endpoints).
 
-## 6. Dokumentasi API (Code-First OpenAPI)
-Pendekatan pembuatan dokumentasi menggunakan strategi **Code-First OpenAPI**.
-- Validasi data menggunakan **Zod**.
-- Generasi OpenAPI Spec menggunakan **`@hono/zod-openapi`**.
-- Antarmuka UI (UI Docs) menggunakan **Scalar** (sebagai pengganti Swagger UI, karena lebih ringan dan terintegrasi resmi dengan Hono).
+## 6. API Documentation (Code-First OpenAPI)
+API documentation follows a **Code-First OpenAPI** strategy:
+- Request/response data validation using **Zod**.
+- OpenAPI specification generation using **`@hono/zod-openapi`**.
+- Interactive UI documentation using **Scalar** (lightweight, modern, and officially integrated with Hono).
 
-### 🔒 Keamanan Dokumentasi API
-Dokumentasi API bersifat rahasia dan **HANYA** boleh diakses oleh tim pengembang. Dokumentasi tidak membutuhkan koneksi database, cukup gunakan middleware `basicAuth` bawaan Hono.
+### 🔒 Documentation Security
+API documentation is confidential and **MUST ONLY** be accessible to authorized team members. Documentation does not require database authentication; use Hono's built-in `basicAuth` middleware.
 
-**Contoh Implementasi Perlindungan Docs:**
+**Documentation Protection Example:**
 ```typescript
 import { basicAuth } from 'hono/basic-auth'
 import { apiReference } from '@scalar/hono-api-reference'
 
-// --- AREA TERLINDUNGI UNTUK DOKUMENTASI ---
-// Terapkan Basic Auth HANYA untuk path /docs dan /openapi.json
+// --- PROTECTED AREA FOR API DOCUMENTATION ---
+// Apply Basic Auth ONLY to /docs and /openapi.json paths
 
 v1App.use('/docs/*', basicAuth({
   username: process.env.DOCS_USERNAME || 'developer',
-  password: process.env.DOCS_PASSWORD || 'rahasia-tim-dev',
+  password: process.env.DOCS_PASSWORD || 'dev-team-secret',
 }));
 
 v1App.use('/openapi.json', basicAuth({
   username: process.env.DOCS_USERNAME || 'developer',
-  password: process.env.DOCS_PASSWORD || 'rahasia-tim-dev',
+  password: process.env.DOCS_PASSWORD || 'dev-team-secret',
 }));
 
-// 1. Generate OpenAPI Spec (Sekarang dilindungi basicAuth)
+// 1. Generate OpenAPI Spec (Protected by basicAuth)
 v1App.doc('/openapi.json', {
   openapi: '3.0.0',
   info: { title: 'POS API', version: '1.0.0' },
 });
 
-// 2. Render Scalar UI (Sekarang dilindungi basicAuth)
+// 2. Render Scalar UI (Protected by basicAuth)
 v1App.get('/docs', apiReference({
   spec: { url: '/api/v1/openapi.json' },
 }));
 ```
 
+## 7. Language & Documentation Standards (English First)
+All documentation, source code, and technical communication within this project **must prioritize English (English First)**. This rule encompasses:
+- **Project Documentation:** All technical documentation files (`README.md`, architectural notes, schema references, setup guides) must be written in English.
+- **API Documentation (OpenAPI & Scalar):** Endpoint titles, summaries, descriptions, parameter explanations, and schema payload examples must be in English.
+- **Source Code & Comments:** Variable names, function names, class/interface definitions, type aliases, directory/file naming, and inline code comments must be in English.
+- **API Responses & Error Messages:** HTTP JSON response payloads, Zod validation messages, and error messages returned to clients must be in English.
+- **Logging System:** Log statements (Pino), event tracing descriptions, and debugging logs must be recorded in English.
+- **Git & Collaboration:** Git commit messages, Pull Request descriptions, issue trackers, and code reviews must be written in English.
+
 ---
-**⚠️ CATATAN PENTING UNTUK AI:**
-Kode harus selalu dibuat seefisien dan seaman mungkin. Jangan membuang waktu (komputasi maupun baris kode) pada hal yang tidak penting. Selalu berpikir kritis dan efisien dalam mengambil keputusan untuk memberikan kode dengan kualitas terbaik berdasarkan panduan di atas.
+**⚠️ CRITICAL NOTES FOR AI AGENTS:**
+1. Code must always be built with maximum efficiency and security. Avoid unnecessary computational overhead and boilerplate. Think critically and make sound architectural decisions aligned with this guide.
+2. **English First:** Every new code artifact, schema, route, validation, log message, error response, and documentation file must consistently use English.

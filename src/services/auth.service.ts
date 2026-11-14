@@ -21,8 +21,8 @@ export class AuthService {
   private db: PrismaClient
   private accessSecret: string
   private refreshSecret: string
-  private accessTokenExpiresIn: number // 15 menit dalam detik
-  private refreshTokenExpiresIn: number // 7 hari dalam detik
+  private accessTokenExpiresIn: number // 15 minutes in seconds
+  private refreshTokenExpiresIn: number // 7 days in seconds
 
   constructor(
     dbClient: PrismaClient = defaultPrisma,
@@ -32,12 +32,12 @@ export class AuthService {
     this.db = dbClient
     this.accessSecret = accessSecret
     this.refreshSecret = refreshSecret
-    this.accessTokenExpiresIn = 15 * 60 // 15 menit
-    this.refreshTokenExpiresIn = 7 * 24 * 60 * 60 // 7 hari
+    this.accessTokenExpiresIn = 15 * 60 // 15 minutes
+    this.refreshTokenExpiresIn = 7 * 24 * 60 * 60 // 7 days
   }
 
   /**
-   * Helper: Buat Access Token (15 Menit)
+   * Helper: Generate Access Token (15 Minutes)
    */
   async generateAccessToken(user: { id: string; email: string; username: string; role: string }): Promise<string> {
     const payload: TokenPayload = {
@@ -51,7 +51,7 @@ export class AuthService {
   }
 
   /**
-   * Helper: Buat Refresh Token (7 Hari)
+   * Helper: Generate Refresh Token (7 Days)
    */
   async generateRefreshToken(userId: string): Promise<string> {
     const payload = {
@@ -63,10 +63,10 @@ export class AuthService {
   }
 
   /**
-   * Register User Baru
+   * Register New User
    */
   async register(data: RegisterInput) {
-    logger.info({ email: data.email, username: data.username }, 'Mencoba mendaftarkan user baru')
+    logger.info({ email: data.email, username: data.username }, 'Attempting to register new user')
 
     const existingUser = await this.db.user.findFirst({
       where: {
@@ -76,9 +76,9 @@ export class AuthService {
 
     if (existingUser) {
       if (existingUser.email === data.email) {
-        throw new Error('Email sudah terdaftar')
+        throw new Error('Email is already registered')
       }
-      throw new Error('Username sudah digunakan')
+      throw new Error('Username is already taken')
     }
 
     const hashedPassword = await Bun.password.hash(data.password)
@@ -94,7 +94,7 @@ export class AuthService {
       },
     })
 
-    logger.info({ userId: newUser.id }, 'User berhasil didaftarkan')
+    logger.info({ userId: newUser.id }, 'User successfully registered')
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...userWithoutPassword } = newUser
@@ -102,33 +102,33 @@ export class AuthService {
   }
 
   /**
-   * Login User
+   * User Login
    */
   async login(data: LoginInput) {
-    logger.info({ email: data.email }, 'Proses login user')
+    logger.info({ email: data.email }, 'Processing user login')
 
     const user = await this.db.user.findUnique({
       where: { email: data.email },
     })
 
     if (!user) {
-      throw new Error('Email atau password tidak valid')
+      throw new Error('Invalid email or password')
     }
 
     if (user.status !== 'ACTIVE') {
-      throw new Error('Akun sedang tidak aktif atau ditangguhkan')
+      throw new Error('Account is inactive or suspended')
     }
 
     const isPasswordValid = await Bun.password.verify(data.password, user.password)
     if (!isPasswordValid) {
-      throw new Error('Email atau password tidak valid')
+      throw new Error('Invalid email or password')
     }
 
-    // Buat token
+    // Generate tokens
     const accessToken = await this.generateAccessToken(user)
     const refreshToken = await this.generateRefreshToken(user.id)
 
-    // Simpan Refresh Token ke database
+    // Save Refresh Token to database
     const expiresAt = new Date(Date.now() + this.refreshTokenExpiresIn * 1000)
     await this.db.refreshToken.create({
       data: {
@@ -138,7 +138,7 @@ export class AuthService {
       },
     })
 
-    logger.info({ userId: user.id }, 'User berhasil login dan sesi dibuat')
+    logger.info({ userId: user.id }, 'User logged in successfully and session created')
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...userWithoutPassword } = user
@@ -150,41 +150,41 @@ export class AuthService {
   }
 
   /**
-   * Refresh Token (Rotasi Token)
+   * Refresh Token (Token Rotation)
    */
   async refresh(refreshToken: string) {
     if (!refreshToken) {
-      throw new Error('Refresh token tidak ditemukan')
+      throw new Error('Refresh token not found')
     }
 
-    // 1. Verifikasi tanda tangan JWT refresh token
+    // 1. Verify JWT refresh token signature
     let payload: { sub: string }
     try {
       payload = (await verify(refreshToken, this.refreshSecret, 'HS256')) as { sub: string }
     } catch {
-      throw new Error('Refresh token tidak valid atau telah kedaluwarsa')
+      throw new Error('Refresh token is invalid or has expired')
     }
 
-    // 2. Cari token di database
+    // 2. Find token in database
     const storedToken = await this.db.refreshToken.findUnique({
       where: { token: refreshToken },
       include: { user: true },
     })
 
     if (!storedToken) {
-      throw new Error('Sesi tidak ditemukan atau telah dicabut')
+      throw new Error('Session not found or has been revoked')
     }
 
     if (storedToken.expiresAt < new Date()) {
       await this.db.refreshToken.delete({ where: { id: storedToken.id } }).catch(() => {})
-      throw new Error('Refresh token telah kedaluwarsa')
+      throw new Error('Refresh token has expired')
     }
 
     if (storedToken.user.status !== 'ACTIVE') {
-      throw new Error('Akun pengguna tidak aktif')
+      throw new Error('User account is not active')
     }
 
-    // 3. Rotasi Token: Hapus token lama & terbitkan token baru
+    // 3. Token Rotation: Delete old token and issue new token
     const newAccessToken = await this.generateAccessToken(storedToken.user)
     const newRefreshToken = await this.generateRefreshToken(storedToken.user.id)
     const newExpiresAt = new Date(Date.now() + this.refreshTokenExpiresIn * 1000)
@@ -200,7 +200,7 @@ export class AuthService {
       }),
     ])
 
-    logger.info({ userId: storedToken.user.id }, 'Token berhasil dirotasi')
+    logger.info({ userId: storedToken.user.id }, 'Token successfully rotated')
 
     return {
       accessToken: newAccessToken,
@@ -209,7 +209,7 @@ export class AuthService {
   }
 
   /**
-   * Logout User (Pencabutan Sesi)
+   * User Logout (Session Revocation)
    */
   async logout(refreshToken?: string) {
     if (!refreshToken) {
@@ -220,32 +220,32 @@ export class AuthService {
       where: { token: refreshToken },
     })
 
-    logger.info('Sesi refresh token berhasil dicabut')
+    logger.info('Refresh token session successfully revoked')
     return { success: true }
   }
 
   /**
-   * Lupa Password (Buat token reset)
+   * Forgot Password (Generate reset token)
    */
   async forgotPassword(email: string) {
-    logger.info({ email }, 'Permintaan lupa password')
+    logger.info({ email }, 'Forgot password request received')
 
     const user = await this.db.user.findUnique({
       where: { email },
     })
 
     if (!user) {
-      // Keamanan: hindari user enumeration
+      // Security: prevent user enumeration
       return {
         success: true,
-        message: 'Jika email terdaftar, tautan reset password telah dikirim',
+        message: 'If the email is registered, a password reset link has been sent',
       }
     }
 
     const resetToken = crypto.randomUUID()
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000) // 1 Jam
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000) // 1 Hour
 
-    // Hapus token reset sebelumnya jika ada, buat baru
+    // Remove previous reset tokens if any, create new one
     await this.db.$transaction([
       this.db.passwordResetToken.deleteMany({ where: { userId: user.id } }),
       this.db.passwordResetToken.create({
@@ -258,18 +258,18 @@ export class AuthService {
     ])
 
     const resetLink = `/reset-password?token=${resetToken}`
-    logger.info({ email, resetLink }, 'Simulasi pengiriman tautan reset password')
+    logger.info({ email, resetLink }, 'Simulated sending password reset link')
 
     return {
       success: true,
-      message: 'Tautan reset password telah dikirim',
-      resetToken, // Berguna untuk testing & simulasi
+      message: 'Password reset link has been sent',
+      resetToken, // Useful for testing and simulation
       resetLink,
     }
   }
 
   /**
-   * Verifikasi Token Reset Password
+   * Verify Password Reset Token
    */
   async verifyResetToken(token: string) {
     const resetRecord = await this.db.passwordResetToken.findUnique({
@@ -278,7 +278,7 @@ export class AuthService {
     })
 
     if (!resetRecord || resetRecord.expiresAt < new Date()) {
-      throw new Error('Token reset password tidak valid atau telah kedaluwarsa')
+      throw new Error('Password reset token is invalid or has expired')
     }
 
     return {
@@ -288,7 +288,7 @@ export class AuthService {
   }
 
   /**
-   * Reset Password User
+   * Reset User Password
    */
   async resetPassword(data: ResetPasswordInput) {
     const resetRecord = await this.db.passwordResetToken.findUnique({
@@ -296,12 +296,12 @@ export class AuthService {
     })
 
     if (!resetRecord || resetRecord.expiresAt < new Date()) {
-      throw new Error('Token reset password tidak valid atau telah kedaluwarsa')
+      throw new Error('Password reset token is invalid or has expired')
     }
 
     const hashedPassword = await Bun.password.hash(data.password)
 
-    // Perbarui password, hapus token reset, dan cabut semua refresh token aktif
+    // Update password, delete reset token, and revoke all active refresh tokens
     await this.db.$transaction([
       this.db.user.update({
         where: { id: resetRecord.userId },
@@ -315,7 +315,7 @@ export class AuthService {
       }),
     ])
 
-    logger.info({ userId: resetRecord.userId }, 'Password berhasil direset')
+    logger.info({ userId: resetRecord.userId }, 'Password reset successfully')
     return { success: true }
   }
 }

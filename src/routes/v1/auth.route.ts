@@ -28,8 +28,8 @@ const registerRoute = createRoute({
   method: 'post',
   path: '/register',
   tags: ['Authentication'],
-  summary: 'Registrasi Pengguna Baru',
-  description: 'Mendaftarkan pengguna baru dengan email, username, dan password.',
+  summary: 'Register New User',
+  description: 'Register a new user with email, username, and password.',
   request: {
     body: {
       content: {
@@ -41,7 +41,7 @@ const registerRoute = createRoute({
   },
   responses: {
     201: {
-      description: 'Registrasi berhasil',
+      description: 'User registered successfully',
       content: {
         'application/json': {
           schema: ApiResponseSchema(UserResponseSchema),
@@ -49,7 +49,7 @@ const registerRoute = createRoute({
       },
     },
     400: {
-      description: 'Data tidak valid atau sudah digunakan',
+      description: 'Invalid input or credentials already taken',
       content: {
         'application/json': {
           schema: ErrorResponseSchema,
@@ -64,8 +64,8 @@ const loginRoute = createRoute({
   method: 'post',
   path: '/login',
   tags: ['Authentication'],
-  summary: 'Login Pengguna',
-  description: 'Login menggunakan email & password. Mengembalikan Access Token di JSON dan Refresh Token via HTTP-Only Cookie.',
+  summary: 'User Login',
+  description: 'Authenticate user using email & password. Returns Access Token in JSON response and Refresh Token via HTTP-Only Cookie.',
   request: {
     body: {
       content: {
@@ -77,7 +77,7 @@ const loginRoute = createRoute({
   },
   responses: {
     200: {
-      description: 'Login berhasil',
+      description: 'Login successful',
       content: {
         'application/json': {
           schema: ApiResponseSchema(LoginResponseDataSchema),
@@ -85,7 +85,7 @@ const loginRoute = createRoute({
       },
     },
     401: {
-      description: 'Kredensial tidak valid',
+      description: 'Invalid credentials',
       content: {
         'application/json': {
           schema: ErrorResponseSchema,
@@ -100,11 +100,11 @@ const refreshRoute = createRoute({
   method: 'post',
   path: '/refresh',
   tags: ['Authentication'],
-  summary: 'Perbarui Access Token (Token Rotation)',
-  description: 'Memperbarui Access Token menggunakan Refresh Token dari HTTP-Only Cookie dan merotasi token refresh.',
+  summary: 'Refresh Access Token (Token Rotation)',
+  description: 'Refresh Access Token using Refresh Token from HTTP-Only Cookie and rotate refresh token.',
   responses: {
     200: {
-      description: 'Token berhasil diperbarui',
+      description: 'Token refreshed successfully',
       content: {
         'application/json': {
           schema: ApiResponseSchema(RefreshResponseDataSchema),
@@ -112,7 +112,7 @@ const refreshRoute = createRoute({
       },
     },
     401: {
-      description: 'Sesi kedaluwarsa atau token tidak valid',
+      description: 'Expired session or invalid token',
       content: {
         'application/json': {
           schema: ErrorResponseSchema,
@@ -127,11 +127,11 @@ const logoutRoute = createRoute({
   method: 'post',
   path: '/logout',
   tags: ['Authentication'],
-  summary: 'Logout Pengguna',
-  description: 'Mencabut sesi di server dan menghapus HTTP-Only Cookie refresh token.',
+  summary: 'User Logout',
+  description: 'Revoke session on server and clear HTTP-Only Cookie refresh token.',
   responses: {
     200: {
-      description: 'Logout berhasil',
+      description: 'Logout successful',
       content: {
         'application/json': {
           schema: ApiResponseSchema(),
@@ -146,8 +146,8 @@ const forgotPasswordRoute = createRoute({
   method: 'post',
   path: '/forgot-password',
   tags: ['Authentication'],
-  summary: 'Lupa Password',
-  description: 'Meminta pembuatan token dan link reset password untuk email terdaftar.',
+  summary: 'Forgot Password',
+  description: 'Request password reset token and link for registered email address.',
   request: {
     body: {
       content: {
@@ -159,7 +159,7 @@ const forgotPasswordRoute = createRoute({
   },
   responses: {
     200: {
-      description: 'Permintaan reset password berhasil diproses',
+      description: 'Password reset request processed successfully',
       content: {
         'application/json': {
           schema: ApiResponseSchema(
@@ -172,7 +172,7 @@ const forgotPasswordRoute = createRoute({
       },
     },
     400: {
-      description: 'Validasi error',
+      description: 'Validation error',
       content: {
         'application/json': {
           schema: ErrorResponseSchema,
@@ -187,14 +187,14 @@ const verifyResetTokenRoute = createRoute({
   method: 'get',
   path: '/verify-reset-token',
   tags: ['Authentication'],
-  summary: 'Verifikasi Token Reset Password',
-  description: 'Memeriksa apakah token reset password valid dan belum kedaluwarsa.',
+  summary: 'Verify Password Reset Token',
+  description: 'Check if password reset token is valid and not expired.',
   request: {
     query: VerifyResetTokenQuerySchema,
   },
   responses: {
     200: {
-      description: 'Token valid',
+      description: 'Token is valid',
       content: {
         'application/json': {
           schema: ApiResponseSchema(VerifyResetTokenDataSchema),
@@ -202,7 +202,7 @@ const verifyResetTokenRoute = createRoute({
       },
     },
     400: {
-      description: 'Token tidak valid atau kedaluwarsa',
+      description: 'Token is invalid or expired',
       content: {
         'application/json': {
           schema: ErrorResponseSchema,
@@ -218,7 +218,7 @@ const resetPasswordRoute = createRoute({
   path: '/reset-password',
   tags: ['Authentication'],
   summary: 'Reset Password',
-  description: 'Mengubah password pengguna menggunakan reset token yang valid.',
+  description: 'Update user password using a valid reset token.',
   request: {
     body: {
       content: {
@@ -230,7 +230,7 @@ const resetPasswordRoute = createRoute({
   },
   responses: {
     200: {
-      description: 'Password berhasil diubah',
+      description: 'Password reset successfully',
       content: {
         'application/json': {
           schema: ApiResponseSchema(),
@@ -238,7 +238,7 @@ const resetPasswordRoute = createRoute({
       },
     },
     400: {
-      description: 'Gagal mereset password',
+      description: 'Failed to reset password',
       content: {
         'application/json': {
           schema: ErrorResponseSchema,
@@ -253,12 +253,12 @@ const getMeRoute = createRoute({
   method: 'get',
   path: '/me',
   tags: ['Authentication'],
-  summary: 'Profil Pengguna Terautentikasi',
-  description: 'Mengambil data pengguna aktif dari JWT Access Token.',
+  summary: 'Authenticated User Profile',
+  description: 'Retrieve current active user data from JWT Access Token.',
   middleware: [verifyJwt] as const,
   responses: {
     200: {
-      description: 'Profil berhasil diambil',
+      description: 'Profile retrieved successfully',
       content: {
         'application/json': {
           schema: ApiResponseSchema(
@@ -292,7 +292,7 @@ authRouter.openapi(registerRoute, async (c) => {
     return c.json(
       {
         success: true,
-        message: 'Registrasi berhasil',
+        message: 'Registration successful',
         data: user as any,
       },
       201
@@ -301,7 +301,7 @@ authRouter.openapi(registerRoute, async (c) => {
     return c.json(
       {
         success: false,
-        message: error.message || 'Registrasi gagal',
+        message: error.message || 'Registration failed',
       },
       400
     )
@@ -313,19 +313,19 @@ authRouter.openapi(loginRoute, async (c) => {
     const data = c.req.valid('json')
     const { accessToken, refreshToken, user } = await authService.login(data)
 
-    // Set HTTP-Only Cookie untuk Refresh Token
+    // Set HTTP-Only Cookie for Refresh Token
     setCookie(c, COOKIE_NAME, refreshToken, {
       httpOnly: true,
       secure: isProduction,
       sameSite: 'Strict',
       path: '/',
-      maxAge: 7 * 24 * 60 * 60, // 7 hari
+      maxAge: 7 * 24 * 60 * 60, // 7 days
     })
 
     return c.json(
       {
         success: true,
-        message: 'Login berhasil',
+        message: 'Login successful',
         data: {
           accessToken,
           user: user as any,
@@ -337,7 +337,7 @@ authRouter.openapi(loginRoute, async (c) => {
     return c.json(
       {
         success: false,
-        message: error.message || 'Login gagal',
+        message: error.message || 'Login failed',
       },
       401
     )
@@ -351,7 +351,7 @@ authRouter.openapi(refreshRoute, async (c) => {
       return c.json(
         {
           success: false,
-          message: 'Refresh token tidak ditemukan di cookie',
+          message: 'Refresh token not found in cookie',
         },
         401
       )
@@ -359,7 +359,7 @@ authRouter.openapi(refreshRoute, async (c) => {
 
     const { accessToken, refreshToken: newRefreshToken } = await authService.refresh(cookieToken)
 
-    // Set cookie baru untuk token rotasi
+    // Set new cookie for token rotation
     setCookie(c, COOKIE_NAME, newRefreshToken, {
       httpOnly: true,
       secure: isProduction,
@@ -371,7 +371,7 @@ authRouter.openapi(refreshRoute, async (c) => {
     return c.json(
       {
         success: true,
-        message: 'Token berhasil diperbarui',
+        message: 'Token refreshed successfully',
         data: {
           accessToken,
         },
@@ -382,7 +382,7 @@ authRouter.openapi(refreshRoute, async (c) => {
     return c.json(
       {
         success: false,
-        message: error.message || 'Gagal memperbarui token',
+        message: error.message || 'Failed to refresh token',
       },
       401
     )
@@ -404,7 +404,7 @@ authRouter.openapi(logoutRoute, async (c) => {
   return c.json(
     {
       success: true,
-      message: 'Logout berhasil',
+      message: 'Logout successful',
     },
     200
   )
@@ -430,7 +430,7 @@ authRouter.openapi(forgotPasswordRoute, async (c) => {
     return c.json(
       {
         success: false,
-        message: error.message || 'Permintaan gagal',
+        message: error.message || 'Request failed',
       },
       400
     )
@@ -445,7 +445,7 @@ authRouter.openapi(verifyResetTokenRoute, async (c) => {
     return c.json(
       {
         success: true,
-        message: 'Token reset password valid',
+        message: 'Password reset token is valid',
         data: result,
       },
       200
@@ -454,7 +454,7 @@ authRouter.openapi(verifyResetTokenRoute, async (c) => {
     return c.json(
       {
         success: false,
-        message: error.message || 'Token tidak valid',
+        message: error.message || 'Invalid token',
       },
       400
     )
@@ -469,7 +469,7 @@ authRouter.openapi(resetPasswordRoute, async (c) => {
     return c.json(
       {
         success: true,
-        message: 'Password berhasil diubah. Silakan login kembali.',
+        message: 'Password has been reset successfully. Please log in again.',
       },
       200
     )
@@ -477,7 +477,7 @@ authRouter.openapi(resetPasswordRoute, async (c) => {
     return c.json(
       {
         success: false,
-        message: error.message || 'Gagal mereset password',
+        message: error.message || 'Failed to reset password',
       },
       400
     )
@@ -489,7 +489,7 @@ authRouter.openapi(getMeRoute, async (c) => {
   return c.json(
     {
       success: true,
-      message: 'Profil berhasil diambil',
+      message: 'Profile retrieved successfully',
       data: user,
     },
     200
