@@ -1,6 +1,7 @@
 import type { MiddlewareHandler } from 'hono'
 import { verify } from 'hono/jwt'
 import { logger } from '../utils/logger'
+import { prisma } from '../db/prisma'
 
 export interface JwtUserPayload {
   sub: string
@@ -42,8 +43,9 @@ export const verifyJwt: MiddlewareHandler = async (c, next) => {
     const payload = (await verify(token, ACCESS_SECRET, 'HS256')) as unknown as JwtUserPayload
     c.set('user', payload)
     await next()
-  } catch (err: any) {
-    logger.warn({ error: err.message }, 'Failed to verify JWT token')
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : 'Token verification failed'
+    logger.warn({ error: errMsg }, 'Failed to verify JWT token')
     return c.json(
       {
         success: false,
@@ -56,7 +58,7 @@ export const verifyJwt: MiddlewareHandler = async (c, next) => {
 
 /**
  * Role-Based Access Control (RBAC) Middleware
- * Checks if the user role has sufficient permission
+ * Checks if the user role matches allowed roles (legacy support)
  */
 export const requireRole = (...allowedRoles: string[]): MiddlewareHandler => {
   return async (c, next) => {
@@ -72,7 +74,10 @@ export const requireRole = (...allowedRoles: string[]): MiddlewareHandler => {
       )
     }
 
-    if (!allowedRoles.includes(user.role)) {
+    const normalizedUserRole = user.role.toUpperCase()
+    const normalizedAllowed = allowedRoles.map((r) => r.toUpperCase())
+
+    if (!normalizedAllowed.includes(normalizedUserRole)) {
       logger.warn(
         { userId: user.sub, role: user.role, requiredRoles: allowedRoles },
         'Access denied due to insufficient permissions'
@@ -93,4 +98,60 @@ export const requireRole = (...allowedRoles: string[]): MiddlewareHandler => {
 // Alias for backward compatibility
 export const checkRole = (requiredRole: string): MiddlewareHandler => {
   return requireRole(requiredRole)
+}
+
+/**
+ * Granular Dynamic Permission Middleware
+ * Checks if user's role has the required permission code (e.g. 'product.create', 'merk.create')
+ * Automatically grants access to 'super_admin' / 'SUPER_ADMIN'.
+ */
+export const requirePermission = (permissionCode: string): MiddlewareHandler => {
+  return async (c, next) => {
+    const user = c.get('user')
+
+    if (!user) {
+      return c.json(
+        {
+          success: false,
+          message: 'Unauthorized: User not authenticated',
+        },
+        401
+      )
+    }
+
+    const roleKey = user.role?.toLowerCase()
+
+    // Super Admin has unrestricted access to all endpoints
+    if (roleKey === 'super_admin') {
+      return await next()
+    }
+
+    // Check user's role permissions in database
+    const hasPermission = await prisma.rolePermission.findFirst({
+      where: {
+        role: {
+          key: roleKey,
+        },
+        permission: {
+          code: permissionCode,
+        },
+      },
+    })
+
+    if (!hasPermission) {
+      logger.warn(
+        { userId: user.sub, role: user.role, requiredPermission: permissionCode },
+        'Access denied due to missing permission'
+      )
+      return c.json(
+        {
+          success: false,
+          message: `Forbidden: Missing required permission '${permissionCode}'`,
+        },
+        403
+      )
+    }
+
+    await next()
+  }
 }

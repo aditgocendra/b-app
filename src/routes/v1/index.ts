@@ -3,6 +3,9 @@ import { basicAuth } from 'hono/basic-auth'
 import { apiReference } from '@scalar/hono-api-reference'
 import { productRouter } from '../product.route'
 import { authRouter } from './auth.route'
+import { roleRouter } from './role.route'
+import { userRouter } from './user.route'
+import { accessRouter } from './access.route'
 
 export const v1App = new OpenAPIHono()
 
@@ -34,3 +37,6 @@ v1App.get('/docs', apiReference({
 // --- MOUNT ROUTES v1 ---
 v1App.route('/auth', authRouter)
 v1App.route('/products', productRouter)
+v1App.route('/roles', roleRouter)
+v1App.route('/users', userRouter)
+v1App.route('/access', accessRouter)

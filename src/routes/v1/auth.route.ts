@@ -10,6 +10,7 @@ import {
   LoginResponseDataSchema,
   RefreshResponseDataSchema,
   VerifyResetTokenDataSchema,
+  StartupStatusDataSchema,
   ApiResponseSchema,
   ErrorResponseSchema,
 } from '../../validations/auth.schema'
@@ -266,6 +267,7 @@ const getMeRoute = createRoute({
               sub: z.string(),
               email: z.string(),
               username: z.string(),
+              fullName: z.string().nullable().optional(),
               role: z.string(),
             })
           ),
@@ -274,6 +276,33 @@ const getMeRoute = createRoute({
     },
     401: {
       description: 'Unauthorized',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+})
+
+// 9. Startup Status Route
+const startupStatusRoute = createRoute({
+  method: 'get',
+  path: '/startup-status',
+  tags: ['Authentication'],
+  summary: 'Check System Startup Status',
+  description: 'Check whether initial system startup is required (no users in database).',
+  responses: {
+    200: {
+      description: 'Startup status retrieved successfully',
+      content: {
+        'application/json': {
+          schema: ApiResponseSchema(StartupStatusDataSchema),
+        },
+      },
+    },
+    500: {
+      description: 'Internal server error',
       content: {
         'application/json': {
           schema: ErrorResponseSchema,
@@ -494,4 +523,26 @@ authRouter.openapi(getMeRoute, async (c) => {
     },
     200
   )
+})
+
+authRouter.openapi(startupStatusRoute, async (c) => {
+  try {
+    const status = await authService.getStartupStatus()
+    return c.json(
+      {
+        success: true,
+        message: 'Startup status retrieved successfully',
+        data: status,
+      },
+      200
+    )
+  } catch (error: any) {
+    return c.json(
+      {
+        success: false,
+        message: error.message || 'Failed to retrieve startup status',
+      },
+      500
+    )
+  }
 })
