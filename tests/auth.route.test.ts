@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { Hono } from 'hono'
 import { v1App } from '../src/routes/v1'
+import { authService } from '../src/services/auth.service'
 
 describe('Auth Routes (Integration / E2E API Tests)', () => {
   const app = new Hono()
@@ -75,5 +76,24 @@ describe('Auth Routes (Integration / E2E API Tests)', () => {
     })
 
     expect(res.status).toBe(401)
+  })
+
+  it('GET /api/v1/auth/startup-status should return 200 with system startup status', async () => {
+    vi.spyOn(authService, 'getStartupStatus').mockResolvedValueOnce({
+      isSetupRequired: true,
+      hasSuperAdmin: false,
+      userCount: 0,
+    })
+
+    const res = await app.request('/api/v1/auth/startup-status', {
+      method: 'GET',
+    })
+
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as any
+    expect(body.success).toBe(true)
+    expect(body.data.isSetupRequired).toBe(true)
+    expect(body.data.hasSuperAdmin).toBe(false)
+    expect(body.data.userCount).toBe(0)
   })
 })

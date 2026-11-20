@@ -9,6 +9,28 @@ describe('AuthService (Unit Tests with Prisma Mock)', () => {
 
   beforeEach(() => {
     prismaMock = mockDeep<PrismaClient>()
+    prismaMock.role.findFirst.mockResolvedValue({
+      id: 'role-uuid-1',
+      key: 'cashier',
+      name: 'Cashier',
+      description: null,
+      isSystem: true,
+      status: 'ACTIVE',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as any)
+
+    prismaMock.role.create.mockResolvedValue({
+      id: 'role-uuid-super-admin',
+      key: 'super_admin',
+      name: 'Super Admin',
+      description: null,
+      isSystem: true,
+      status: 'ACTIVE',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as any)
+
     authService = new AuthService(
       prismaMock as unknown as PrismaClient,
       'test-access-secret-32-chars-long-!',
@@ -23,9 +45,19 @@ describe('AuthService (Unit Tests with Prisma Mock)', () => {
         id: 'user-uuid-1',
         email: 'kasir@example.com',
         username: 'kasir1',
+        fullName: 'Kasir Satu',
         password: 'hashed-password-123',
         phoneNumber: '08123456789',
-        role: 'CASHIER',
+        roleId: 'role-uuid-1',
+        role: {
+          id: 'role-uuid-1',
+          key: 'cashier',
+          name: 'Cashier',
+          isSystem: true,
+          status: 'ACTIVE',
+          description: null,
+          permissions: [],
+        },
         status: 'ACTIVE',
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -34,6 +66,7 @@ describe('AuthService (Unit Tests with Prisma Mock)', () => {
       const result = await authService.register({
         email: 'kasir@example.com',
         username: 'kasir1',
+        fullName: 'Kasir Satu',
         password: 'secretPassword123',
         phoneNumber: '08123456789',
         role: 'CASHIER',
@@ -41,6 +74,7 @@ describe('AuthService (Unit Tests with Prisma Mock)', () => {
 
       expect(result).toHaveProperty('id', 'user-uuid-1')
       expect(result).toHaveProperty('email', 'kasir@example.com')
+      expect(result).toHaveProperty('fullName', 'Kasir Satu')
       expect(result).not.toHaveProperty('password')
       expect(prismaMock.user.create).toHaveBeenCalledTimes(1)
     })
@@ -59,6 +93,95 @@ describe('AuthService (Unit Tests with Prisma Mock)', () => {
           password: 'secretPassword123',
         })
       ).rejects.toThrow('Email is already registered')
+    })
+
+    it('should allow registering SUPER_ADMIN if none exists', async () => {
+      prismaMock.user.findFirst.mockResolvedValue(null)
+      prismaMock.user.create.mockResolvedValue({
+        id: 'admin-uuid-1',
+        email: 'superadmin@example.com',
+        username: 'superadmin',
+        password: 'hashed-password-123',
+        roleId: 'role-uuid-super-admin',
+        role: {
+          id: 'role-uuid-super-admin',
+          key: 'super_admin',
+          name: 'Super Admin',
+          isSystem: true,
+          status: 'ACTIVE',
+          description: null,
+          permissions: [],
+        },
+        status: 'ACTIVE',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any)
+
+      const result = await authService.register({
+        email: 'superadmin@example.com',
+        username: 'superadmin',
+        password: 'secretPassword123',
+        role: 'SUPER_ADMIN',
+      })
+
+      expect(result).toHaveProperty('id', 'admin-uuid-1')
+      expect(result).toHaveProperty('role', 'SUPER_ADMIN')
+    })
+
+    it('should throw error if attempting to register a second SUPER_ADMIN', async () => {
+      prismaMock.user.findFirst.mockResolvedValue({
+        id: 'existing-super-admin',
+        role: 'SUPER_ADMIN',
+      } as any)
+
+      await expect(
+        authService.register({
+          email: 'another_admin@example.com',
+          username: 'another_admin',
+          password: 'secretPassword123',
+          role: 'SUPER_ADMIN',
+        })
+      ).rejects.toThrow('Super Admin already exists')
+    })
+  })
+
+  describe('getStartupStatus', () => {
+    it('should return isSetupRequired: true when userCount is 0', async () => {
+      prismaMock.user.count
+        .mockResolvedValueOnce(0) // total users
+        .mockResolvedValueOnce(0) // super admin count
+
+      const status = await authService.getStartupStatus()
+
+      expect(status).toEqual({
+        isSetupRequired: true,
+        hasSuperAdmin: false,
+        userCount: 0,
+      })
+    })
+
+    it('should return isSetupRequired: false when users exist', async () => {
+      prismaMock.user.count
+        .mockResolvedValueOnce(1) // total users
+        .mockResolvedValueOnce(1) // super admin count
+      prismaMock.role.findFirst.mockResolvedValueOnce({
+        id: 'super-admin-role-id',
+        key: 'super_admin',
+        name: 'Super Admin',
+        isSystem: true,
+        status: 'ACTIVE',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        description: null,
+      } as any)
+
+      const status = await authService.getStartupStatus()
+
+      expect(status).toEqual({
+        isSetupRequired: false,
+        hasSuperAdmin: true,
+        userCount: 1,
+      })
     })
   })
 

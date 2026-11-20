@@ -1,14 +1,27 @@
 import { z } from '@hono/zod-openapi'
 
-export const RoleEnum = z.enum(['SUPER_ADMIN', 'ADMIN', 'WAREHOUSE_ADMIN', 'CASHIER'])
+export const RoleStatusEnum = z.enum(['ACTIVE', 'INACTIVE'])
 export const UserStatusEnum = z.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED'])
+
+export const RoleResponseSchema = z.object({
+  id: z.string().openapi({ example: 'b94dbba2-0c15-4fa8-bcf6-13a96860341c' }),
+  key: z.string().openapi({ example: 'super_admin' }),
+  name: z.string().openapi({ example: 'Super Admin' }),
+  description: z.string().nullable().optional().openapi({ example: 'Full system access' }),
+  isSystem: z.boolean().openapi({ example: true }),
+  status: RoleStatusEnum.openapi({ example: 'ACTIVE' }),
+}).openapi('RoleResponse')
 
 export const UserResponseSchema = z.object({
   id: z.string().uuid().openapi({ example: 'b94dbba2-0c15-4fa8-bcf6-13a96860341c' }),
   email: z.string().email().openapi({ example: 'cashier@example.com' }),
   username: z.string().openapi({ example: 'cashier01' }),
+  fullName: z.string().nullable().optional().openapi({ example: 'John Doe', description: 'User full name' }),
   phoneNumber: z.string().nullable().optional().openapi({ example: '08123456789' }),
-  role: RoleEnum.openapi({ example: 'CASHIER' }),
+  roleId: z.string().optional().openapi({ example: 'b94dbba2-0c15-4fa8-bcf6-13a96860341c' }),
+  role: z.string().openapi({ example: 'SUPER_ADMIN' }),
+  roleDetails: RoleResponseSchema.optional(),
+  permissions: z.array(z.string()).optional().openapi({ example: ['product.view', 'pos.cashier'] }),
   status: UserStatusEnum.openapi({ example: 'ACTIVE' }),
   createdAt: z.string().or(z.date()).openapi({ example: '2026-10-08T12:00:00.000Z' }),
   updatedAt: z.string().or(z.date()).openapi({ example: '2026-10-08T12:00:00.000Z' }),
@@ -18,9 +31,10 @@ export const UserResponseSchema = z.object({
 export const RegisterSchema = z.object({
   email: z.string().email().openapi({ example: 'user@example.com', description: 'User valid email' }),
   username: z.string().min(3).max(30).openapi({ example: 'john_doe', description: 'Unique username (min 3 chars)' }),
+  fullName: z.string().optional().openapi({ example: 'John Doe', description: 'User full name' }),
   password: z.string().min(6).openapi({ example: 'StrongP@ssw0rd', description: 'Plain password (min 6 chars)' }),
   phoneNumber: z.string().optional().openapi({ example: '081234567890', description: 'Optional phone number' }),
-  role: RoleEnum.optional().default('CASHIER').openapi({ example: 'CASHIER', description: 'User role' }),
+  role: z.string().optional().default('CASHIER').openapi({ example: 'CASHIER', description: 'User role key or ID' }),
 }).openapi('RegisterRequest')
 
 // Login Schema
@@ -55,6 +69,13 @@ export const VerifyResetTokenDataSchema = z.object({
   email: z.string().email().openapi({ example: 'user@example.com' }),
 }).openapi('VerifyResetTokenData')
 
+// Startup Status Schema
+export const StartupStatusDataSchema = z.object({
+  isSetupRequired: z.boolean().openapi({ example: true, description: 'True if no users exist in the database' }),
+  hasSuperAdmin: z.boolean().openapi({ example: false, description: 'True if at least one Super Admin exists' }),
+  userCount: z.number().openapi({ example: 0, description: 'Total number of registered users' }),
+}).openapi('StartupStatusData')
+
 // Reset Password Schema
 export const ResetPasswordSchema = z.object({
   token: z.string().min(1).openapi({ example: 'random-reset-token-string' }),
@@ -76,7 +97,7 @@ export const ApiResponseSchema = <T extends z.ZodTypeAny>(dataSchema?: T) =>
 export const ErrorResponseSchema = z.object({
   success: z.boolean().openapi({ example: false }),
   message: z.string().openapi({ example: 'Invalid credentials or resource not found' }),
-  errors: z.any().optional(),
+  errors: z.unknown().optional(),
 }).openapi('ErrorResponse')
 
 export type RegisterInput = z.input<typeof RegisterSchema>

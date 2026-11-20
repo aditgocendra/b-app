@@ -7,6 +7,8 @@ import { v1App } from './routes/v1'
 const app = new Hono()
 
 // Apply Global Middlewares
+// Note: CORS middleware is not needed because Hono runs on an internal network
+// and is accessed server-to-server by SvelteKit BFF (browser -> sveltekit -> hono).
 app.use('*', requestLogger)
 app.onError(globalErrorHandler)
 
